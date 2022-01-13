@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<form method="post" class="form-group " style="margin-left: 650px; margin-top: 250px">
+        {% csrf_token %}
+        <div style="color: #9f9a97; font-size: 20px; width: 50%">
+            {{ form.as_p }}
+        </div>
+        <br>
+        <button type="submit" class="btn btn-outline-light">Sign Up</button>
+    </form>
+
+</body>
+</html>
