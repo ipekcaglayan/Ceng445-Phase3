@@ -1,3 +1,5 @@
+{% load static %}
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,6 +7,19 @@
     <title>Title</title>
 </head>
 <body>
-    <h2>Welcome {{ user.username }}</h2>
+<h2>Home</h2>
+
+    <br>
+<a href="{% url 'shared_photo_library:login' %}">
+Login
+</a>
+    <br>
+<a href="{% url 'shared_photo_library:signup' %}">
+Create an account
+</a>
+    <br>
+
+
+
 </body>
 </html>
