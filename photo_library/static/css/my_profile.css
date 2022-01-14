@@ -43,3 +43,7 @@
   color: white;
   transform: rotateY(180deg);
 }
+
+.cover {
+  object-fit: cover;
+}

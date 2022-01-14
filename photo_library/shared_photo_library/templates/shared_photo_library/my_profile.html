@@ -3,6 +3,8 @@
 
 {% block head %}
     <link rel="stylesheet" href="{% static 'css/my_profile.css' %}?v1.2">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+
 {% endblock %}
 {% block body %}
     <h2>Welcome {{ user.username }}</h2>
@@ -14,22 +16,21 @@
 
 <div class="container">
     <div class="row">
-        {% for photo, tags in photos_and_tags %}
+        {% for photo in photos %}
 
     <div class="col-md-3">
 
         <div class="flip-card">
       <div class="flip-card-inner">
         <div class="flip-card-front">
-          <img src="{{ photo.photo.url }}" alt="Avatar" style="width:300px;height:300px;">
+          <img class="cover" src="{{ photo.photo.url }}" alt="Avatar" style="height:300px; width:300px;">
         </div>
         <div class="flip-card-back">
           <p>Location: {{ photo.location }}</p>
           <p>Date: {{ photo.date}}</p>
-          <p>Tags: {% for tag in tags %} {{ tag.tag_name }} | {% endfor %}
-          </p>
+          <p>Tags: {{ photo.tags }} </p>
         <i class="fas fa-photo-video"></i>
-        <button type="button" style="border: none; background: transparent" data-bs-toggle="modal" data-bs-target="#exampleModal">
+        <button onclick="loadModal({{ photo.id }},'{{ photo.location }}', '{{ photo.date }}', '{{ photo.tags }}');" type="button" style="border: none; background: transparent" data-bs-toggle="modal" data-bs-target="#exampleModal">
             <i style="margin-left: 10px" class="fas fa-edit"></i>
         </button>
 
@@ -47,12 +48,25 @@
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title" id="exampleModalLabel">Modal title</h5>
+            <h5 class="modal-title" id="exampleModalLabel">Photo Detail</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
-          <div class="modal-body">
-            ...
-          </div>
+            <div class="modal-body">
+                <form action="{% url 'shared_photo_library:update_photo' %}" method="post" enctype="multipart/form-data">
+                  {% csrf_token %}
+                    <div class="form-group">
+                    <label for="location">Location</label>
+                    <input type="text" class="form-control" name="location" id="location" value="">
+                    <label for="date">Date</label>
+                    <input type="text" class="form-control" name="date" id="date" value="">
+                    <label for="date">Tags</label>
+                    <input type="text" class="form-control" name="tags" id="tags" value="">
+                    <input type="hidden" name="id" id="id" value="">
+                  </div>
+                  <button type="submit" class="btn btn-primary">Submit</button>
+                </form>
+
+            </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             <button type="button" class="btn btn-primary">Save changes</button>
@@ -62,5 +76,27 @@
     </div>
 
 </div>
+
+
+<script>
+
+function loadModal(ph_id, ph_loc, ph_date, ph_tags){
+    let id = document.getElementById('id');
+    let loc = document.getElementById('location');
+    let date = document.getElementById('date');
+    let tags = document.getElementById('tags');
+    loc.value = ph_loc;
+    date.value = ph_date;
+    tags.value = ph_tags;
+    id.value = ph_id;
+}
+$(document).ready(function () {
+    let obj = document.getElementById('xx');
+    {#obj.innerHTML = "heyyyooo";#}
+    {#console.log(obj.innerHTML);#}
+
+    });
+
+</script>
 
 {% endblock %}

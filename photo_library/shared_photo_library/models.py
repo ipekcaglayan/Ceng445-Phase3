@@ -4,25 +4,18 @@ from django.utils import timezone
 # Create your models here.
 
 
-class Tag(models.Model):
-    tag_name = models.CharField(max_length=100)
-
-    def __str__(self):
-        return self.tag_name
-
-
 class Photo(models.Model):
     photo = models.ImageField(blank=True)
     location = models.CharField(max_length=100, null=True)
     date = models.DateTimeField(default=timezone.now, null=True)
-    tags = models.ManyToManyField(Tag, related_name='photo_tags')
+    tags = models.CharField(max_length=100, null=True)
 
 
 class FilterView(models.Model):
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='view_owner')
     view_name = models.CharField(max_length=100)
     shared_users = models.ManyToManyField(User, related_name='view_shared_with')
-    tags = models.ManyToManyField(Tag, related_name='view_tags')
+    tags = models.CharField(max_length=100, null=True)
     conjunctive = models.BooleanField(default=False)
     login_required = models.BooleanField(default=True)
     location_rect = models.CharField(max_length=100, null=True)

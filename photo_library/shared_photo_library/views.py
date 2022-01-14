@@ -59,10 +59,24 @@ class MyProfile(View):
     def get(self, request):
         logged_in_user = request.user
         photos = list(Photo.objects.all())
-        tags = list()
-        for photo in photos:
-            tags.append(list(photo.tags.all()))
+
         return render(request, 'shared_photo_library/my_profile.html',
-                      {'user': logged_in_user, 'photos_and_tags': zip(photos, tags)})
+                      {'user': logged_in_user, 'photos': photos})
+
+
+class PhotoView(View):
+    def post(self, request, **kwargs):
+        data = request.POST.dict()
+        print(data)
+        ph_id = data['id']
+        print(int(ph_id))
+        photo = Photo.objects.get(id=ph_id)
+        print(photo)
+        photo.location = data['location']
+        photo.tags = data['tags']
+        photo.save()
+        return redirect('shared_photo_library:my_profile')
+
+
 
 
