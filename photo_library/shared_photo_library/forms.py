@@ -5,10 +5,12 @@ from .models import *
 class AddPhoto(forms.ModelForm):
     class Meta:
         model = Photo
-        fields = ['photo', 'location', 'date', 'tags']
+        fields = ['photo']
 
 
-class UpdatePhoto(forms.ModelForm):
+class CreateCollection(forms.ModelForm):
     class Meta:
-        model = Photo
-        fields = ['location', 'date', 'tags']
+        model = Collection
+        fields = ['collection_name']
+
+

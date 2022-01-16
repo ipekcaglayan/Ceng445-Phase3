@@ -1,13 +1,16 @@
+{% extends 'base.html' %}
 {% load static %}
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
-<h2>Home</h2>
+{% block head %}
+    <link rel="stylesheet" href="{% static 'css/my_profile.css' %}?v1.2">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+
+    <title>Home</title>
+
+
+{% endblock %}
+{% block body %}
+    <h2>Home</h2>
 
     <br>
 <a href="{% url 'shared_photo_library:login' %}">
@@ -19,7 +22,6 @@ Create an account
 </a>
     <br>
 
+{% endblock %}
 
 
-</body>
-</html>

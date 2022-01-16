@@ -1,3 +1,4 @@
+from django.db.models import Count
 from django.shortcuts import render, redirect
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth import login, logout
@@ -44,11 +45,12 @@ class Home(View):
 
 class UploadPhoto(LoginRequiredMixin, View):
     def post(self, request):
-        new_photo = Photo.objects.create()
+        new_photo = Photo.objects.create(added_by=request.user)
         form = AddPhoto(request.POST, request.FILES, instance=new_photo)
         if form.is_valid():
             form.save()
-            return redirect('shared_photo_library:upload_photo')
+            new_photo.load_meta_data()
+            return redirect('shared_photo_library:photos')
 
     def get(self, request):
         form = AddPhoto()
@@ -58,24 +60,120 @@ class UploadPhoto(LoginRequiredMixin, View):
 class MyProfile(View):
     def get(self, request):
         logged_in_user = request.user
-        photos = list(Photo.objects.all())
-
         return render(request, 'shared_photo_library/my_profile.html',
-                      {'user': logged_in_user, 'photos': photos})
+                      {'user': logged_in_user})
 
 
 class PhotoView(View):
+    def get(self, request):
+        logged_in_user = request.user
+        photos = list(Photo.objects.filter(added_by=logged_in_user).order_by('-added_time'))
+        photos = photo_tags_as_list(photos)
+        shared_collections = list(Collection.objects.filter(shared_users=logged_in_user).values('id', 'collection_name'))
+        users_collections = list(Collection.objects.filter(owner=logged_in_user).values('id', 'collection_name'))
+        return render(request, 'shared_photo_library/photos.html',
+                      {'user': logged_in_user, 'photos': photos, 'shared_collections': shared_collections,
+                       'users_collections': users_collections})
+
     def post(self, request, **kwargs):
         data = request.POST.dict()
         print(data)
         ph_id = data['id']
-        print(int(ph_id))
         photo = Photo.objects.get(id=ph_id)
-        print(photo)
-        photo.location = data['location']
-        photo.tags = data['tags']
-        photo.save()
-        return redirect('shared_photo_library:my_profile')
+
+        if data.get('delete'):
+            Photo.objects.get(id=ph_id).delete()
+            return redirect('shared_photo_library:photos')
+
+        if data.get('collections'):
+            collections_ids = data['collections'].split(",")[1:]
+            collections_ids = set(collections_ids)
+            collections = {col.id: col for col in Collection.objects.all()}
+            for col_id in collections_ids:
+                col = collections[int(col_id)]
+                col.add_photo_to_collection(photo)
+            return redirect('shared_photo_library:photos')
+
+        photo.add_location(data['location'])
+        photo.add_tags(data['tags-list'])
+        if data.get('col_id'):
+            col_id = int(data['col_id'])
+            return redirect('shared_photo_library:collection_detail', id=col_id)
+        return redirect('shared_photo_library:photos')
+
+
+class CollectionView(View):
+    def get(self, request):
+        form = CreateCollection()
+        logged_in_user = request.user
+        users_collections = list(Collection.objects.filter(owner=logged_in_user).annotate(photo_number=Count('photos')))
+        shared_collections = list(Collection.objects.filter(shared_users=logged_in_user).annotate(photo_number=Count('photos')))
+        collections = users_collections + shared_collections
+        return render(request, 'shared_photo_library/collections.html',
+                      {'user': logged_in_user, 'form': form, 'collections': collections,
+                       'users_collections': users_collections, 'shared_collections': shared_collections})
+
+    def post(self, request):
+        new_col = Collection.objects.create(owner=request.user)
+        form = CreateCollection(request.POST, instance=new_col)
+        if form.is_valid():
+            form.save()
+            return redirect('shared_photo_library:collections')
+
+
+class CollectionDetail(View):
+    def get(self, request, **kwargs):
+        col_id = int(kwargs['id'])
+        col = Collection.objects.get(id=col_id)
+        photos = col.photos.all().order_by('-added_time')
+        photos = photo_tags_as_list(photos)
+
+        # if user wants to add a photo to the collection, he/she can select from  only his/her uploaded photos
+        # to add to collection
+        users_all_photos = list(Photo.objects.filter(added_by=request.user).order_by('-added_time'))
+
+        # users that collection can be shared with
+        not_shared_users = [user.username for user in User.objects.all().exclude(shared_collections=col)]
+
+        # users that collection already shared with
+        shared_users = {user.username: user for user in User.objects.filter(shared_collections=col)}
+
+        return render(request, 'shared_photo_library/collection_detail.html',
+                      {'user': request.user, 'col': col, 'photos': photos, 'users_all_photos': users_all_photos,
+                       'not_shared_users': not_shared_users, 'shared_users': shared_users})
+
+    def post(self, request, **kwargs):
+        col_id = int(kwargs['id'])
+        col = Collection.objects.get(id=col_id)
+        data = request.POST.dict()
+        if data.get('remove'):  # form submitted to remove a photo from collection
+            photo_id = int(data.get('photo_id'))
+            col.remove_photo_from_collection(Photo.objects.get(id=photo_id))
+        elif data.get('selected-photos'):
+            selected_photos_ids = data['selected-photos'].split(',')[1:]
+            col.add_photos_to_collection(selected_photos_ids)
+        elif data.get('remove-selected-photos'):
+            selected_photos_ids = data['remove-selected-photos'].split(',')[1:]
+            col.remove_photos_from_collection(selected_photos_ids)
+
+        elif data.get('unshare-with'):
+            u_id = int(data.get('unshare-with'))
+            user = User.objects.get(id=u_id)
+            col.unshare_with(user)
+
+        elif data.get('share-with'):
+            username = data.get('share-with')
+            user = User.objects.get(username=username)
+            col.share_with(user)
+
+        return redirect('shared_photo_library:collection_detail', id=col_id)
+
+
+class FilterView(View):
+    def get(self, request):
+        return render(request, 'shared_photo_library/filter_views.html')
+
+
 
 
 
