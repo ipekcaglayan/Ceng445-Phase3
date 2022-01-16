@@ -14,3 +14,9 @@ class CreateCollection(forms.ModelForm):
         fields = ['collection_name']
 
 
+class CreateView(forms.ModelForm):
+    class Meta:
+        model = FilterView
+        fields = ['view_name', 'location_rect', 'start_time', 'end_time']
+
+

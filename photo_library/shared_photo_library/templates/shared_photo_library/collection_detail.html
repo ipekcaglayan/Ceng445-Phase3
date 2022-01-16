@@ -1,5 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load crispy_forms_tags %}
+
 
 {% block head %}
     <link rel="stylesheet" href="{% static 'css/my_profile.css' %}?v1.2">
@@ -18,6 +20,7 @@
     <button style="display: none" id="removeSelectedButton" onclick="removeSelectedPhotos()" type="button" class="btn btn-primary">Remove Selected Photos</button>
 
     <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#shareWithUser">Share Collection</button>
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createView">Create View</button>
 
 <div class="container">
     <div class="row">
@@ -197,6 +200,67 @@
         {% endif %}
 
 
+
+        </div>
+      </div>
+    </div>
+    <div class="modal fade" id="createView" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Create view for this collection.</h5>
+
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+               <small style="color: #bbbbbb">&#8226; Use - for the fields you want to left empty</small>  <br>
+                <small style="color: #bbbbbb">&#8226; Use yyyy-mm-dd format for date fields.</small>
+                <br><br>
+                <form id="createViewForm" action="{% url 'shared_photo_library:views' %}" method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    {{ view_form|crispy }}
+                    <input type="hidden" name="filter-tags" id="filterTags" value=""/>
+                    <input type="hidden" name="col_id" id="col_id" value="{{ col.id }}"/>
+                    <input type="hidden" name="conj" id="conj" value=""/>
+                    <input type="hidden" name="create" id="create" value="true"/>
+
+                </form>
+                <br>
+
+                <p class="p-1 border bg-warning">Select filter tags</p>
+                <div class="row">
+                {% for filter_tag in filter_tags %}
+                    <div class="col-md-3">
+                        <div class="form-check">
+                          <input onchange="filterCheckChanged('{{ filter_tag }}')" class="form-check-input" type="checkbox" value="" id="flexCheckDefault">
+                          <label class="form-check-label" for="flexCheckDefault">
+                              {{ filter_tag }}
+                          </label>
+                        </div>
+                    </div>
+                {% endfor %}
+
+            </div>
+                <br>
+                <p class="p-1 border bg-warning">Filter tags in ... form: </p>
+
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="inlineRadioOptions" id="inlineRadio1" value="option1">
+                  <label class="form-check-label" for="inlineRadio1">Conjunctive</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="inlineRadioOptions" id="inlineRadio2" value="option2">
+                  <label class="form-check-label" for="inlineRadio2">Disjunctive</label>
+                </div>
+
+
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                <button onclick="createView()" type="button" class="btn btn-dark" >Create</button>
+            </div>
 
         </div>
       </div>
@@ -413,6 +477,31 @@ function shareWith(not_shared_users){
 
 }
 
+function filterCheckChanged(tag){
+    let tags = [];
+    let filterTags = document.getElementById('filterTags');
+    tags = filterTags.value.split(',')
+    const index = tags.indexOf(tag);
+    if (index > -1) {
+        tags.splice(index, 1);
+    }
+    else{
+        tags.push(tag)
+    }
+    filterTags.value = tags.join()
+    console.log(filterTags.value);
+}
+
+function createView(){
+    let conj = document.getElementById('inlineRadio1');
+    let disj = document.getElementById('inlineRadio2');
+    let conjunctive = false;
+    if(conj.checked){
+        conjunctive = true;
+    }
+    document.getElementById('conj').value = conjunctive
+    document.getElementById('createViewForm').submit()
+}
 
 
 

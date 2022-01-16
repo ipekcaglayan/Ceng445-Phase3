@@ -127,6 +127,9 @@ class CollectionDetail(View):
         col = Collection.objects.get(id=col_id)
         photos = col.photos.all().order_by('-added_time')
         photos = photo_tags_as_list(photos)
+        view_form = CreateView()
+
+        filter_tags = col.get_filter_tags()
 
         # if user wants to add a photo to the collection, he/she can select from  only his/her uploaded photos
         # to add to collection
@@ -140,7 +143,8 @@ class CollectionDetail(View):
 
         return render(request, 'shared_photo_library/collection_detail.html',
                       {'user': request.user, 'col': col, 'photos': photos, 'users_all_photos': users_all_photos,
-                       'not_shared_users': not_shared_users, 'shared_users': shared_users})
+                       'not_shared_users': not_shared_users, 'shared_users': shared_users, 'view_form': view_form,
+                       'filter_tags': list(filter_tags)})
 
     def post(self, request, **kwargs):
         col_id = int(kwargs['id'])
@@ -169,11 +173,47 @@ class CollectionDetail(View):
         return redirect('shared_photo_library:collection_detail', id=col_id)
 
 
-class FilterView(View):
+class Filter(View):
     def get(self, request):
-        return render(request, 'shared_photo_library/filter_views.html')
+        logged_in_user = request.user
+        users_views = list(FilterView.objects.filter(owner=logged_in_user).annotate(photo_number=Count('photos')))
+        shared_views = list(FilterView.objects.filter(shared_users=logged_in_user).annotate(photo_number=Count('photos')))
+        views = users_views + shared_views
+        return render(request, 'shared_photo_library/filter_views.html',
+                      {'user': logged_in_user, 'users_views': users_views, 'shared_views': shared_views, 'views': views})
+
+    def post(self, request):
+        data = request.POST.dict()
+        print(data)
+        col_id = int(data.get('col_id'))
+        col = Collection.objects.get(id=col_id)
+        if data.pop('create'):
+            view = FilterView(owner=request.user, collection=col)
+            view.update_view(data)
+
+            return redirect('shared_photo_library:view_detail', id=view.id)
+        return redirect('shared_photo_library:views')
 
 
+class FilterViewDetail(View):
+    def get(self, request, **kwargs):
+        logged_in_user = request.user
+        view_id = int(kwargs['id'])
+        view = FilterView.objects.get(id=view_id)
+        photos = view.photos.all().order_by('-added_time')
+        photos = photo_tags_as_list(photos)
+        filter_tags = view.collection.get_filter_tags()
+        return render(request, 'shared_photo_library/filter_view_detail.html',
+                      {'user': logged_in_user, 'photos': photos, 'view': view, 'filter_tags': filter_tags})
+
+    def post(self, request, **kwargs):
+        data = request.POST.dict()
+        print(data)
+        logged_in_user = request.user
+        view_id = int(kwargs['id'])
+        view = FilterView.objects.get(id=view_id)
+        view.update_view(data)
+        return redirect('shared_photo_library:view_detail', id=view_id)
 
 
 

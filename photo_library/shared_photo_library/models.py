@@ -9,7 +9,7 @@ import datetime
 class Photo(models.Model):
     photo = models.ImageField(blank=True)
     location = models.CharField(max_length=100, null=True)
-    date = models.DateTimeField(null=True)
+    date = models.DateField(null=True)
     tags = models.CharField(max_length=100, null=True)
     added_by = models.ForeignKey(User, on_delete=models.CASCADE)
     added_time = models.DateTimeField(default=timezone.now)
@@ -37,7 +37,6 @@ class Photo(models.Model):
         self.save()
 
     def add_tags(self, tags):
-        print(tags, "tags")
         self.tags = tags
         self.save()
 
@@ -63,23 +62,10 @@ def photo_tags_as_list(photos):
     return photos
 
 
-class FilterView(models.Model):
-    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='view_owner')
-    view_name = models.CharField(max_length=100)
-    shared_users = models.ManyToManyField(User, related_name='view_shared_with')
-    tags = models.CharField(max_length=100, null=True)
-    conjunctive = models.BooleanField(default=False)
-    login_required = models.BooleanField(default=True)
-    location_rect = models.CharField(max_length=100, null=True)
-    start_time = models.DateTimeField(null=True)
-    end_time = models.DateTimeField(null=True)
-
-
 class Collection(models.Model):
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='col_owner')
     collection_name = models.CharField(max_length=100)
     shared_users = models.ManyToManyField(User, related_name='shared_collections')
-    views = models.ManyToManyField(FilterView)
     cover = models.ImageField(default='empty_col.jpg')
     created_date = models.DateTimeField(default=timezone.now)
     photos = models.ManyToManyField(Photo, related_name='col_photos')
@@ -117,3 +103,114 @@ class Collection(models.Model):
     def share_with(self, user):
         self.shared_users.add(user)
         self.save()
+
+    def get_filter_tags(self):
+        photos = self.photos.all()
+        photos = photo_tags_as_list(photos)
+        filter_tags = set()
+        for ph in photos:
+            if ph.tags != ['']:
+                filter_tags = filter_tags.union(set(ph.tags))
+        return filter_tags
+
+
+class FilterView(models.Model):
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='view_owner')
+    collection = models.ForeignKey(Collection, on_delete=models.CASCADE, related_name='attached_to')
+    view_name = models.CharField(max_length=100)
+    shared_users = models.ManyToManyField(User, related_name='shared_views')
+    tags = models.CharField(max_length=100, null=True)
+    conjunctive = models.BooleanField(default=False)
+    login_required = models.BooleanField(default=True)
+    location_rect = models.CharField(max_length=100, null=True)
+    start_time = models.DateField(null=True)
+    end_time = models.DateField(null=True)
+    created_date = models.DateTimeField(default=timezone.now)
+    photos = models.ManyToManyField(Photo, related_name='view_photos')
+    cover = models.ImageField(default='empty_col.jpg')
+
+    def filter_by_view(self):
+        self.photos.clear()
+        self.save()
+        print(self.start_time, "start_time")
+        print(self.end_time, "end_time")
+        print(self.tags, "tags")
+        col_photos = self.collection.photos.all()
+        orj_photos = {ph.id: ph for ph in col_photos}
+        col_photos = photo_tags_as_list(col_photos)
+        filter_tags = self.tags
+        if filter_tags:
+            filter_tags = filter_tags.split(',')
+            print(filter_tags)
+            if len(filter_tags) > 1 and filter_tags[0] == "":
+                filter_tags = filter_tags[1:]
+            print(filter_tags)
+            # print(filter_tags, " if icinde filter tags")
+        # print(filter_tags, " if cikisi filter tags")
+        for ph in col_photos:
+            # print(ph.tags, "photo tags")
+            if self.start_time:
+                if ph.date and ph.date < self.start_time:
+                    continue
+            if self.end_time:
+                if ph.date and ph.date > self.end_time:
+                    continue
+            if self.location_rect and self.location_rect != "-":
+                filter_loc = eval(self.location_rect)
+                if ph.location and ph.location != "-":
+                    photo_loc = eval(ph.location)
+                    if (filter_loc[0] > photo_loc[0]) or (filter_loc[1] < photo_loc[0]) or (filter_loc[2] > photo_loc[1]) or (filter_loc[3] < photo_loc[1]):
+                        continue
+            if filter_tags:
+                if self.conjunctive:  # take photo if it contains at least one of the filter tags
+                    # print("im here")
+                    contains_one_tag = False
+                    for ph_tag in ph.tags:
+                        # print("ph_tag--->", ph_tag, "---->filter tags--->", filter_tags)
+                        if ph_tag in filter_tags:
+                            contains_one_tag = True
+                            break
+                    if not contains_one_tag:
+                        continue
+                else:
+                    contains_all = True
+                    for filter_tag in filter_tags:
+                        print(filter_tag, ph.tags)
+                        if filter_tag not in ph.tags:
+                            contains_all = False
+                    if not contains_all:
+                        continue
+
+            self.photos.add(orj_photos[ph.id])
+            self.save()
+
+    def update_view(self, data):
+        tags = data.pop('filter-tags')
+        print(tags)
+        conj = False
+
+        if data.pop('conj') == "true":
+            conj = True
+        start_time = None
+        if data.get('start_time') != '-':
+            yymmdd = [int(x) for x in data['start_time'].split("-")]
+            start_time = datetime.datetime(*yymmdd)
+        end_time = None
+        if data.get('end_time') != '-':
+            yymmdd = [int(x) for x in data['end_time'].split("-")]
+            end_time = datetime.datetime(*yymmdd)
+
+        self.view_name = data['view_name']
+        self.tags = tags
+        self.conjunctive = conj
+        self.location_rect = data['location_rect']
+        self.start_time = start_time
+        self.end_time = end_time
+
+        self.save()
+        self.filter_by_view()
+
+
+
+
+
