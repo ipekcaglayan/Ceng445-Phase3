@@ -203,8 +203,15 @@ class FilterViewDetail(View):
         photos = view.photos.all().order_by('-added_time')
         photos = photo_tags_as_list(photos)
         filter_tags = view.collection.get_filter_tags()
+
+        # users that view can be shared with
+        not_shared_users = [user.username for user in User.objects.all().exclude(shared_views=view)]
+
+        # users that collection already shared with
+        shared_users = {user.username: user for user in User.objects.filter(shared_views=view)}
         return render(request, 'shared_photo_library/filter_view_detail.html',
-                      {'user': logged_in_user, 'photos': photos, 'view': view, 'filter_tags': filter_tags})
+                      {'user': logged_in_user, 'photos': photos, 'view': view, 'filter_tags': filter_tags,
+                       'not_shared_users': not_shared_users, 'shared_users': shared_users})
 
     def post(self, request, **kwargs):
         data = request.POST.dict()
@@ -212,7 +219,19 @@ class FilterViewDetail(View):
         logged_in_user = request.user
         view_id = int(kwargs['id'])
         view = FilterView.objects.get(id=view_id)
-        view.update_view(data)
+
+        if data.get('share-with'):
+            username = data.get('share-with')
+            user = User.objects.get(username=username)
+            view.share_with(user)
+
+        elif data.get('unshare-with'):
+            u_id = int(data.get('unshare-with'))
+            user = User.objects.get(id=u_id)
+            view.unshare_with(user)
+
+        else:  # set filter form submitted to update view filters
+            view.update_view(data)
         return redirect('shared_photo_library:view_detail', id=view_id)
 
 

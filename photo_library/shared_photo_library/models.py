@@ -129,6 +129,14 @@ class FilterView(models.Model):
     photos = models.ManyToManyField(Photo, related_name='view_photos')
     cover = models.ImageField(default='empty_col.jpg')
 
+    def unshare_with(self, user):
+        self.shared_users.remove(user)
+        self.save()
+
+    def share_with(self, user):
+        self.shared_users.add(user)
+        self.save()
+
     def filter_by_view(self):
         self.photos.clear()
         self.save()

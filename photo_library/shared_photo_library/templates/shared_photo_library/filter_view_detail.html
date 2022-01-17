@@ -12,9 +12,10 @@
 {% endblock %}
 {% block body %}
     <h2>{{ view.view_name }}</h2>
-
-    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#shareWithUser">Share Collection</button>
-    <button onclick="openSetFilterModal('{{ view.tags }}', '{{ view.start_time }}', '{{ view.end_time }}', '{{ view.conjunctive }}')" type="button" class="btn btn-primary" >Set Filters</button>
+    {% if view.owner.id == user.id %}
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#shareWithUser">Share View</button>
+        <button onclick="openSetFilterModal('{{ view.tags }}', '{{ view.start_time }}', '{{ view.end_time }}', '{{ view.conjunctive }}')" type="button" class="btn btn-primary" >Set Filters</button>
+    {% endif %}
 
 <div class="container">
     <div class="row">
@@ -41,13 +42,12 @@
     <div class="modal fade" id="shareWithUser" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
       <div class="modal-dialog">
         <div class="modal-content">
-        {% if user == col.owner %}
             <div class="modal-header">
-                <h5 class="modal-title" id="exampleModalLabel">Share Collection</h5>
+                <h5 class="modal-title" id="exampleModalLabel">Share View</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
              <div class="modal-body">
-              <div class="p-1 border bg-warning">Collection Shared With</div>
+              <div class="p-1 border bg-warning">View Shared With</div>
               <br>
               <div class="row">
                   {% if shared_users %}
@@ -63,7 +63,7 @@
 
               </div>
               <br>
-              <form id="shareForm" action="{% url 'shared_photo_library:collection_detail' id=col.id %}"  action="" method="post" enctype="multipart/form-data">
+              <form id="shareForm" action="{% url 'shared_photo_library:view_detail' id=view.id %}"  action="" method="post" enctype="multipart/form-data">
                   {% csrf_token %}
                   <div class="mb-3">
                     <label for="username" class="form-label">User's username that you want to share this collection with:</label>
@@ -75,31 +75,13 @@
                         <button onclick="shareWith({{ not_shared_users }})" type="button" class="btn btn-dark">Share</button>
                   </div>
               </form>
-              <form id="unshareForm" action="{% url 'shared_photo_library:collection_detail' id=col.id %}" method="post" enctype="multipart/form-data">
+              <form id="unshareForm" action="{% url 'shared_photo_library:view_detail' id=view.id %}" method="post" enctype="multipart/form-data">
                   {% csrf_token %}
                   <input type="hidden" value="" name="unshare-with" id="unshareWith">
               </form>
 
 
           </div>
-
-        {% else %}
-            <div class="modal-header">
-                <h5 class="modal-title" id="exampleModalLabel">Not Allowed</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>This collection is shared with you. You don't have the access to share it. You are allowed to only inspect and update the collection.</p>
-            </div>
-
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Ok</button>
-            </div>
-
-
-        {% endif %}
-
-
 
         </div>
       </div>
