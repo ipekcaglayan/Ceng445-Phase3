@@ -40,7 +40,8 @@ class SignUp(View):
 
 class Home(View):
     def get(self, request):
-        return render(request, 'shared_photo_library/home.html')
+        # return render(request, 'shared_photo_library/home.html')
+        return render(request, 'shared_photo_library/index.html')
 
 
 class UploadPhoto(LoginRequiredMixin, View):
@@ -71,9 +72,13 @@ class PhotoView(View):
         photos = photo_tags_as_list(photos)
         shared_collections = list(Collection.objects.filter(shared_users=logged_in_user).values('id', 'collection_name'))
         users_collections = list(Collection.objects.filter(owner=logged_in_user).values('id', 'collection_name'))
-        return render(request, 'shared_photo_library/photos.html',
+        # return render(request, 'shared_photo_library/photos.html',
+        #               {'user': logged_in_user, 'photos': photos, 'shared_collections': shared_collections,
+        #                'users_collections': users_collections})
+        form = AddPhoto()
+        return render(request, 'shared_photo_library/all_photos.html',
                       {'user': logged_in_user, 'photos': photos, 'shared_collections': shared_collections,
-                       'users_collections': users_collections})
+                       'users_collections': users_collections, 'form': form})
 
     def post(self, request, **kwargs):
         data = request.POST.dict()
@@ -92,10 +97,19 @@ class PhotoView(View):
             for col_id in collections_ids:
                 col = collections[int(col_id)]
                 col.add_photo_to_collection(photo)
+                views_attached_to_col = FilterView.objects.filter(collection=col)
+                for view in views_attached_to_col:
+                    view.filter_by_view()
             return redirect('shared_photo_library:photos')
 
         photo.add_location(data['location'])
         photo.add_tags(data['tags-list'])
+
+        # all views updated: if tag x is added to a photo all views includes tag x must be updated
+        # and all views can be contain tag x
+        all_views = FilterView.objects.all()
+        for view in all_views:
+            view.filter_by_view()
         if data.get('col_id'):
             col_id = int(data['col_id'])
             return redirect('shared_photo_library:collection_detail', id=col_id)
@@ -109,7 +123,10 @@ class CollectionView(View):
         users_collections = list(Collection.objects.filter(owner=logged_in_user).annotate(photo_number=Count('photos')))
         shared_collections = list(Collection.objects.filter(shared_users=logged_in_user).annotate(photo_number=Count('photos')))
         collections = users_collections + shared_collections
-        return render(request, 'shared_photo_library/collections.html',
+        # return render(request, 'shared_photo_library/collections.html',
+        #               {'user': logged_in_user, 'form': form, 'collections': collections,
+        #                'users_collections': users_collections, 'shared_collections': shared_collections})
+        return render(request, 'shared_photo_library/all_collections.html',
                       {'user': logged_in_user, 'form': form, 'collections': collections,
                        'users_collections': users_collections, 'shared_collections': shared_collections})
 
@@ -141,7 +158,11 @@ class CollectionDetail(View):
         # users that collection already shared with
         shared_users = {user.username: user for user in User.objects.filter(shared_collections=col)}
 
-        return render(request, 'shared_photo_library/collection_detail.html',
+        # return render(request, 'shared_photo_library/collection_detail.html',
+        #               {'user': request.user, 'col': col, 'photos': photos, 'users_all_photos': users_all_photos,
+        #                'not_shared_users': not_shared_users, 'shared_users': shared_users, 'view_form': view_form,
+        #                'filter_tags': list(filter_tags)})
+        return render(request, 'shared_photo_library/col_detail.html',
                       {'user': request.user, 'col': col, 'photos': photos, 'users_all_photos': users_all_photos,
                        'not_shared_users': not_shared_users, 'shared_users': shared_users, 'view_form': view_form,
                        'filter_tags': list(filter_tags)})
@@ -153,12 +174,24 @@ class CollectionDetail(View):
         if data.get('remove'):  # form submitted to remove a photo from collection
             photo_id = int(data.get('photo_id'))
             col.remove_photo_from_collection(Photo.objects.get(id=photo_id))
+
+            views_attached_to_col = FilterView.objects.filter(collection=col)
+            for view in views_attached_to_col:
+                view.filter_by_view()
         elif data.get('selected-photos'):
             selected_photos_ids = data['selected-photos'].split(',')[1:]
             col.add_photos_to_collection(selected_photos_ids)
+
+            views_attached_to_col = FilterView.objects.filter(collection=col)
+            for view in views_attached_to_col:
+                view.filter_by_view()
         elif data.get('remove-selected-photos'):
             selected_photos_ids = data['remove-selected-photos'].split(',')[1:]
             col.remove_photos_from_collection(selected_photos_ids)
+
+            views_attached_to_col = FilterView.objects.filter(collection=col)
+            for view in views_attached_to_col:
+                view.filter_by_view()
 
         elif data.get('unshare-with'):
             u_id = int(data.get('unshare-with'))
@@ -179,8 +212,13 @@ class Filter(View):
         users_views = list(FilterView.objects.filter(owner=logged_in_user).annotate(photo_number=Count('photos')))
         shared_views = list(FilterView.objects.filter(shared_users=logged_in_user).annotate(photo_number=Count('photos')))
         views = users_views + shared_views
-        return render(request, 'shared_photo_library/filter_views.html',
-                      {'user': logged_in_user, 'users_views': users_views, 'shared_views': shared_views, 'views': views})
+        # return render(request, 'shared_photo_library/filter_views.html',
+        #               {'user': logged_in_user, 'users_views': users_views, 'shared_views': shared_views,
+        #               'views': views})
+
+        return render(request, 'shared_photo_library/views.html',
+                      {'user': logged_in_user, 'users_views': users_views, 'shared_views': shared_views,
+                       'views': views})
 
     def post(self, request):
         data = request.POST.dict()
@@ -209,7 +247,11 @@ class FilterViewDetail(View):
 
         # users that collection already shared with
         shared_users = {user.username: user for user in User.objects.filter(shared_views=view)}
-        return render(request, 'shared_photo_library/filter_view_detail.html',
+        # return render(request, 'shared_photo_library/filter_view_detail.html',
+        #               {'user': logged_in_user, 'photos': photos, 'view': view, 'filter_tags': filter_tags,
+        #                'not_shared_users': not_shared_users, 'shared_users': shared_users})
+
+        return render(request, 'shared_photo_library/view_detail.html',
                       {'user': logged_in_user, 'photos': photos, 'view': view, 'filter_tags': filter_tags,
                        'not_shared_users': not_shared_users, 'shared_users': shared_users})
 

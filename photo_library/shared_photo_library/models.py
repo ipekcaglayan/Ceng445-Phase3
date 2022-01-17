@@ -17,7 +17,7 @@ class Photo(models.Model):
     def load_meta_data(self):
         img = Image(self.photo.open(mode='rb'))  # open img in binary mode to get meta data using exif
         self.tags = ""
-        self.location = ""
+        self.location = "-"
         if img.has_exif:
             date = img.get('datetime')
             if date:
