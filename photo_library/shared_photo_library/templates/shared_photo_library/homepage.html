@@ -16,13 +16,19 @@
             <div class="container-fluid js-tm-page-content" data-page-no="1" data-page-type="gallery">
                 <br><br><br>
                 <div class="container">
-                        <form action="{% url 'shared_photo_library:signup' %}" style="margin: 0 auto; width: 300px" method="post" >
+                    {% if user_authenticated %}
+                        Welcome {{ user.username }}
+
+                    {% else %}
+                        <form action="{% url 'shared_photo_library:login' %}" class="login" method="post" >
                         {% csrf_token %}
                         {{ form|crispy }}
-                        <Button   style="margin-top: 5px; " class="btn btn-dark btn-lg" type="submit">Register</Button>
+                        <Button   style="margin-top: 5px; " class="btn btn-dark btn-lg" type="submit">Login</Button>
                             <br>
+                        <small style="margin-top: 5px">Don't have an account? <a href="{% url 'shared_photo_library:signup' %}"><i class="fas fa-user-plus"></i></a> </small>
 
                     </form>
+                    {% endif %}
 
 
                 </div>

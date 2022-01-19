@@ -57,11 +57,12 @@ http://www.tooplate.com/view/2086-multi-color
                     <div class="tm-navbar-bg">
 
                         <a class="navbar-brand text-uppercase" href="#"><i class="fa fa-images tm-brand-icon"></i>Simpek Photos</a>
-                        <div align="right" style="width: 600px; margin-right: 20px">
-                            <a class="nav-link" href="#"><i class="fas fa-home"></i>Home <span class="sr-only">(current)</span></a>
+                        <div align="right" style="width: 650px; margin-right: 20px">
+                            <a class="nav-link" href="{% url 'shared_photo_library:home' %}"><i class="fas fa-home"></i>Home <span class="sr-only">(current)</span></a>
                             <a class="nav-link" href="{% url 'shared_photo_library:photos' %}"><i class="fas fa-images"></i>Photos</a>
                             <a class="nav-link" href="{% url 'shared_photo_library:collections' %}"><i class="fas fa-folder"></i>Collections</a>
                             <a class="nav-link" href="{% url 'shared_photo_library:views' %}"><i class="fas fa-filter"></i>Views</a>
+                            <a class="nav-link" href="{% url 'shared_photo_library:logout' %}"><i class="fas fa-sign-out-alt"></i></a>
                         </div>
 
                         {% block contains_link %}

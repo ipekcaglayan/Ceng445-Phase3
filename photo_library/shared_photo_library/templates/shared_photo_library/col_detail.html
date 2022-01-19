@@ -134,6 +134,8 @@
                     </div>
 
                     <input type="hidden" name="id" id="id" value="">
+                    <input type="hidden" name="col_id" id="col_id" value="{{ col.id }}"/>
+
                   </div>
                     <input  id="tags-list" name="tags-list" type="hidden" value="">
                  <div class="modal-footer">
@@ -312,7 +314,7 @@
           <div class="modal-body">
               <div class="container">
                   <div class="row justify-content-md-center">
-                    {% for ph in users_all_photos %}
+                    {% for ph in users_not_added_photos %}
 
                         <div class="col-md-3">
                             <div class="card text-center" style="">
@@ -342,7 +344,7 @@
     <form id="addPhotosForm" action="{% url 'shared_photo_library:collection_detail' id=col.id %}" method="post">
         {% csrf_token %}
         <input type="hidden" name="selected-photos" id="selected-photos" value="">
-        <input type="hidden" name="col_id" id="col_id" value="">
+        <input type="hidden" name="col_id" id="col_id" value="{{ col.id }}">
     </form>
     <form id="removeSelectedPhotos" action="{% url 'shared_photo_library:collection_detail' id=col.id %}" method="post">
         {% csrf_token %}
@@ -350,7 +352,7 @@
     </form>
 <script>
 
-function loadModal(ph_id, ph_loc, ph_date, ph_tags){
+function loadModal(ph_id, ph_loc, ph_date, ph_tags, col_id){
     let id = document.getElementById('id');
     let loc = document.getElementById('location');
     let date = document.getElementById('date');

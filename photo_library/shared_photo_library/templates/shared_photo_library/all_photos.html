@@ -72,44 +72,6 @@
                                         </div>
 
                                         </div>
-                                        <div class="grid-item">
-                                            <figure class="effect-bubba">
-                                                <img class="img-fluid tm-img cover" src="{{ photo.photo.url }}" alt="Image"  style="height:300px; width:300px;">
-                                                <figcaption>
-
-                                                <p class="tm-figure-description">Location: {{ photo.location }}</p>
-                                                  <p class="tm-figure-description">Date: {{ photo.date}}</p>
-                                                  <p class="tm-figure-description">Tags: {{ photo.tags }} </p>
-                                                <a class="tm-figure-description" href="{{ photo.photo.url }}"> <i class="fas fa-photo-video "></i> </a>
-
-                                            </figcaption>
-                                            </figure>
-                                            <div class="row text-md-center" style="width: 50%; margin-left: 75px" >
-                                                <div class="col">
-                                                    <button  onclick="loadModal({{ photo.id }},'{{ photo.location }}', '{{ photo.date }}', {{ photo.tags }});" type="button" style="border: none; display: inline-block; background: transparent" data-bs-toggle="modal" data-bs-target="#exampleModal">
-                                                    <i  class="fas fa-edit"></i>
-                                                    </button>
-                                                </div>
-                                                <div class="col">
-                                                    <button onclick="deletePhoto({{ photo.id  }})" type="button"  style="border: none; display: inline-block; background: transparent "data-bs-toggle="modal" data-bs-target="#deletePhoto">
-                                                        <i  class="fas fa-trash"></i>
-                                                    </button>
-                                                </div>
-
-                                                <div class="col">
-                                                    <button onclick="addPhotoToCollection({{ photo.id  }})" type="button"  style="border: none; display: inline-block; background: transparent "data-bs-toggle="modal " data-bs-target="#addToCollection">
-                                                        <i  class="fas fa-folder-plus"></i>
-                                                    </button>
-                                                </div>
-
-
-
-{##}
-
-                                        </div>
-
-                                        </div>
-
 
                                     {% endfor %}
 

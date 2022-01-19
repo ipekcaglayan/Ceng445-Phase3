@@ -12,17 +12,22 @@ class Login(View):
     def get(self, request):
         form = AuthenticationForm()
         # signup_form = UserCreationForm()
-        return render(request, 'shared_photo_library/login.html', {'form': form})
+        return render(request, 'shared_photo_library/homepage.html', {'form': form})
 
     def post(self, request):
         form = AuthenticationForm(data=request.POST)
-        signup_form = UserCreationForm()
         if form.is_valid():
             user = form.get_user()
             login(request, user)
             print("user  logged in")
-            return redirect('shared_photo_library:my_profile')
-        return render(request, 'shared_photo_library/login.html', {'form': form})
+            return redirect('shared_photo_library:home')
+        return render(request, 'shared_photo_library/homepage.html', {'form': form, 'user_authenticated': False})
+
+
+class Logout(View):
+    def get(self, request):
+        logout(request)
+        return redirect('shared_photo_library:home')
 
 
 class SignUp(View):
@@ -40,8 +45,13 @@ class SignUp(View):
 
 class Home(View):
     def get(self, request):
-        # return render(request, 'shared_photo_library/home.html')
-        return render(request, 'shared_photo_library/index.html')
+        user = request.user
+        print(user.username)
+        form = AuthenticationForm()
+        user_authenticated = user.is_authenticated
+        return render(request, 'shared_photo_library/homepage.html', {'form': form,
+                                                                      'user_authenticated': user_authenticated,
+                                                                      'user': user})
 
 
 class UploadPhoto(LoginRequiredMixin, View):
@@ -151,7 +161,7 @@ class CollectionDetail(View):
         # if user wants to add a photo to the collection, he/she can select from  only his/her uploaded photos
         # to add to collection
         users_all_photos = list(Photo.objects.filter(added_by=request.user).order_by('-added_time'))
-
+        users_not_added_photos = list(Photo.objects.filter(added_by=request.user).exclude(col_photos=col).order_by('-added_time'))
         # users that collection can be shared with
         not_shared_users = [user.username for user in User.objects.all().exclude(shared_collections=col)]
 
@@ -165,7 +175,7 @@ class CollectionDetail(View):
         return render(request, 'shared_photo_library/col_detail.html',
                       {'user': request.user, 'col': col, 'photos': photos, 'users_all_photos': users_all_photos,
                        'not_shared_users': not_shared_users, 'shared_users': shared_users, 'view_form': view_form,
-                       'filter_tags': list(filter_tags)})
+                       'filter_tags': list(filter_tags), 'users_not_added_photos': users_not_added_photos})
 
     def post(self, request, **kwargs):
         col_id = int(kwargs['id'])
