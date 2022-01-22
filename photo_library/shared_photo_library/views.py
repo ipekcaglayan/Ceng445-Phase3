@@ -1,8 +1,9 @@
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.shortcuts import render, redirect
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth import login, logout
 from django.views import View
+from django.http import Http404, HttpResponse
 from django.contrib.auth.mixins import LoginRequiredMixin
 from .models import *
 from .forms import *
@@ -24,7 +25,7 @@ class Login(View):
         return render(request, 'shared_photo_library/homepage.html', {'form': form, 'user_authenticated': False})
 
 
-class Logout(View):
+class Logout(LoginRequiredMixin, View):
     def get(self, request):
         logout(request)
         return redirect('shared_photo_library:home')
@@ -46,12 +47,20 @@ class SignUp(View):
 class Home(View):
     def get(self, request):
         user = request.user
-        print(user.username)
-        form = AuthenticationForm()
         user_authenticated = user.is_authenticated
+        form = AuthenticationForm()
+        cols = []
+        photos = []
+        views = []
+        if user_authenticated:
+            cols = list(Collection.objects.filter(Q(owner=user) | Q(shared_users=user)).order_by('-created_date')[:4])
+            photos = list(Photo.objects.filter(added_by=user).order_by('-added_time')[:4])
+            views = list(FilterView.objects.filter(Q(owner=user) | Q(shared_users=user)).order_by('-created_date')[:4])
+
         return render(request, 'shared_photo_library/homepage.html', {'form': form,
                                                                       'user_authenticated': user_authenticated,
-                                                                      'user': user})
+                                                                      'user': user, 'photos': photos,
+                                                                      'collections': cols, 'views': views})
 
 
 class UploadPhoto(LoginRequiredMixin, View):
@@ -75,7 +84,7 @@ class MyProfile(View):
                       {'user': logged_in_user})
 
 
-class PhotoView(View):
+class PhotoView(LoginRequiredMixin, View):
     def get(self, request):
         logged_in_user = request.user
         photos = list(Photo.objects.filter(added_by=logged_in_user).order_by('-added_time'))
@@ -91,13 +100,15 @@ class PhotoView(View):
                        'users_collections': users_collections, 'form': form})
 
     def post(self, request, **kwargs):
+        user = request.user
         data = request.POST.dict()
-        print(data)
         ph_id = data['id']
         photo = Photo.objects.get(id=ph_id)
-
+        print(data)
         if data.get('delete'):
-            Photo.objects.get(id=ph_id).delete()
+            if user != photo.added_by:
+                return HttpResponse("It's not your photo you cannot delete it.", status=403)
+            photo.delete()
             return redirect('shared_photo_library:photos')
 
         if data.get('collections'):
@@ -106,6 +117,9 @@ class PhotoView(View):
             collections = {col.id: col for col in Collection.objects.all()}
             for col_id in collections_ids:
                 col = collections[int(col_id)]
+                if col.owner != user and (user not in col.shared_users.all()):
+                    return HttpResponse(f"You don't have permission to add photo to collection = {col.collection_name}",
+                                        status=403)
                 col.add_photo_to_collection(photo)
                 views_attached_to_col = FilterView.objects.filter(collection=col)
                 for view in views_attached_to_col:
@@ -113,6 +127,8 @@ class PhotoView(View):
             return redirect('shared_photo_library:photos')
 
         photo.add_location(data['location'])
+        if "-" in data['date']:
+            photo.add_date(data['date'])
         photo.add_tags(data['tags-list'])
 
         # all views updated: if tag x is added to a photo all views includes tag x must be updated
@@ -126,7 +142,7 @@ class PhotoView(View):
         return redirect('shared_photo_library:photos')
 
 
-class CollectionView(View):
+class CollectionView(LoginRequiredMixin, View):
     def get(self, request):
         form = CreateCollection()
         logged_in_user = request.user
@@ -148,7 +164,7 @@ class CollectionView(View):
             return redirect('shared_photo_library:collections')
 
 
-class CollectionDetail(View):
+class CollectionDetail(LoginRequiredMixin, View):
     def get(self, request, **kwargs):
         col_id = int(kwargs['id'])
         col = Collection.objects.get(id=col_id)
@@ -162,6 +178,7 @@ class CollectionDetail(View):
         # to add to collection
         users_all_photos = list(Photo.objects.filter(added_by=request.user).order_by('-added_time'))
         users_not_added_photos = list(Photo.objects.filter(added_by=request.user).exclude(col_photos=col).order_by('-added_time'))
+
         # users that collection can be shared with
         not_shared_users = [user.username for user in User.objects.all().exclude(shared_collections=col)]
 
@@ -181,6 +198,10 @@ class CollectionDetail(View):
         col_id = int(kwargs['id'])
         col = Collection.objects.get(id=col_id)
         data = request.POST.dict()
+        user = request.user
+        if col.owner != user and (user not in col.shared_users.all()):
+            return HttpResponse(f"You don't have permission to make any changes in collection = {col.collection_name}",
+                                status=403)
         if data.get('remove'):  # form submitted to remove a photo from collection
             photo_id = int(data.get('photo_id'))
             col.remove_photo_from_collection(Photo.objects.get(id=photo_id))
@@ -216,7 +237,7 @@ class CollectionDetail(View):
         return redirect('shared_photo_library:collection_detail', id=col_id)
 
 
-class Filter(View):
+class Filter(LoginRequiredMixin, View):
     def get(self, request):
         logged_in_user = request.user
         users_views = list(FilterView.objects.filter(owner=logged_in_user).annotate(photo_number=Count('photos')))
@@ -235,6 +256,10 @@ class Filter(View):
         print(data)
         col_id = int(data.get('col_id'))
         col = Collection.objects.get(id=col_id)
+        user = request.user
+        if col.owner != user and (user not in col.shared_users.all()):
+            return HttpResponse(f"You don't have permission to create view for the collection = {col.collection_name}",
+                                status=403)
         if data.pop('create'):
             view = FilterView(owner=request.user, collection=col)
             view.update_view(data)
@@ -243,7 +268,7 @@ class Filter(View):
         return redirect('shared_photo_library:views')
 
 
-class FilterViewDetail(View):
+class FilterViewDetail(LoginRequiredMixin, View):
     def get(self, request, **kwargs):
         logged_in_user = request.user
         view_id = int(kwargs['id'])
@@ -271,6 +296,11 @@ class FilterViewDetail(View):
         logged_in_user = request.user
         view_id = int(kwargs['id'])
         view = FilterView.objects.get(id=view_id)
+        col = view.collection
+
+        if col.owner != logged_in_user and (logged_in_user not in col.shared_users.all()):
+            return HttpResponse(f"You don't have permission to see the view for the collection = {col.collection_name}",
+                                status=403)
 
         if data.get('share-with'):
             username = data.get('share-with')
